@@ -19,6 +19,7 @@ const PRESET_HOSTS: Record<string, string> = {
   "generativelanguage.googleapis.com": "Google Gemini",
   "api.x.ai": "xAI",
   "api.unbiased.ai": "Unbiased AI",
+  "api.aimlapi.com": "AI/ML API",
 };
 
 function signedIn(
@@ -68,7 +69,8 @@ function signedIn(
         return {
           provider: preset,
           signIn: "API key",
-          said: `Uses your ${preset} API key.`,
+          // "AI/ML API" already ends in API: its key is an "AI/ML API key".
+          said: `Uses your ${/\bAPI$/.test(preset) ? preset : `${preset} API`} key.`,
         };
       return {
         provider: "OpenAI-compatible",

@@ -143,6 +143,11 @@ Newest first. `Unreleased` is what is on `main` and not yet tagged.
 
 ### OpenBot Desktop
 
+- **AI/ML API on Connect your AI.** The setup window lists AI/ML API beside Unbiased AI: paste an
+  AI/ML API key and Bots run on `openai/gpt-5-mini` at `https://api.aimlapi.com/v1`, or on any other
+  model named there. It is carried as the compatible endpoint is, so the server sees an
+  OpenAI-compatible address and Settings names it AI/ML API. Nothing changes for an installation
+  already set up.
 - **OpenBot Cloud, first on the first screen.** "Set up OpenBot" opens on OpenBot Cloud: this app on
   your computer, connected to OpenBot Cloud, where your Bots run. Sign in to OpenBot Cloud opens
   your browser to sign in at my.open.bot, or to create an account, then comes straight back to the

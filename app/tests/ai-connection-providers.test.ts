@@ -49,8 +49,17 @@ function catalogue() {
   });
 }
 
+/**
+ * Rows only the setup window offers. AI/ML API is a key for a named OpenAI-compatible address, which
+ * Desktop hands on as `openai-compatible`; the server's `AiConnectionProvider` has no id of its own
+ * for it, so Settings reaches the same address through the custom endpoint row.
+ */
+const SETUP_WINDOW_ONLY = new Set(["aimlapi"]);
+
 test("Settings lists the setup window's providers, in its order and words", () => {
-  const desktop = catalogue();
+  const desktop = catalogue().filter(
+    (row) => !SETUP_WINDOW_ONLY.has(row.id ?? ""),
+  );
   expect(desktop.length).toBe(6);
   expect<unknown>(
     AI_PROVIDERS.map(({ id, name, summary, logins, mark }) => ({

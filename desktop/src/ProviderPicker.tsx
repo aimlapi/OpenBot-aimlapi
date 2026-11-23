@@ -105,6 +105,14 @@ const endpointPresets: Record<
     keyUrl: "https://platform.unbiased.ai/dashboard/keys",
     keyLink: "Get an Unbiased AI API key",
   },
+  // https://docs.aimlapi.com/: one OpenAI-compatible gateway for many vendors' models, named as
+  // `vendor/model`. GPT-5 mini there streams and calls tools over chat completions.
+  aimlapi: {
+    baseUrl: "https://api.aimlapi.com/v1",
+    model: "openai/gpt-5-mini",
+    keyUrl: "https://aimlapi.com/app/keys",
+    keyLink: "Get an AI/ML API key",
+  },
 };
 
 /** What approving in the browser does, for each provider that signs in that way. */
@@ -126,6 +134,11 @@ function cancelPlanSignIn(provider: string) {
       );
     },
   );
+}
+
+/** "xAI API key", and "AI/ML API key" for a name that already ends in API. */
+function keyLabel(name: string): string {
+  return /\bAPI$/.test(name) ? `${name} key` : `${name} API key`;
 }
 
 function endpointIdentity(baseUrl: string | undefined): string {
@@ -1001,7 +1014,7 @@ export function ProviderPicker({
               <div className="field">
                 <label htmlFor="ekey">
                   {preset
-                    ? `${row.name} API key`
+                    ? keyLabel(row.name)
                     : "API key, if the endpoint needs one"}
                 </label>
                 <input

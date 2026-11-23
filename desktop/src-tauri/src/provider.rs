@@ -125,6 +125,20 @@ pub fn catalogue() -> Vec<Provider> {
             caution: None,
         },
         Provider {
+            id: "aimlapi".into(),
+            name: "AI/ML API".into(),
+            summary: "Use an AI/ML API key for OpenAI, Claude, Gemini, DeepSeek and more.".into(),
+            /*
+             * A key only: AI/ML API's gateway speaks the OpenAI API at its own address, so this is
+             * the Google and xAI key route with the address filled in. Nothing new travels: the
+             * window hands it on as a compatible endpoint, and the server is never asked to know
+             * the name. No mark is vendored yet, so the name is drawn on its own.
+             */
+            logins: vec![Login::Endpoint],
+            mark: None,
+            caution: None,
+        },
+        Provider {
             id: "openai-compatible".into(),
             name: "Any OpenAI-compatible endpoint".into(),
             summary: "Azure, Bedrock, Mistral, DeepSeek, Ollama, vLLM or your own.".into(),
@@ -152,7 +166,7 @@ mod tests {
             .collect();
         assert_eq!(
             asking,
-            vec!["google", "xai", "unbiased", "openai-compatible"]
+            vec!["google", "xai", "unbiased", "aimlapi", "openai-compatible"]
         );
         for provider in catalogue()
             .into_iter()
@@ -180,7 +194,7 @@ mod tests {
 
     /// Named providers stay ahead of the custom endpoint escape hatch.
     #[test]
-    fn five_named_providers_and_one_custom_endpoint() {
+    fn six_named_providers_and_one_custom_endpoint() {
         let rows = catalogue();
         let ids: Vec<&str> = rows.iter().map(|provider| provider.id.as_str()).collect();
         assert_eq!(
@@ -191,9 +205,22 @@ mod tests {
                 "google",
                 "xai",
                 "unbiased",
+                "aimlapi",
                 "openai-compatible"
             ]
         );
+    }
+
+    /// AI/ML API is a key-only endpoint row: no plan, no sign-in, and its own name on the row.
+    #[test]
+    fn aimlapi_asks_for_a_key_and_nothing_else() {
+        let aimlapi = catalogue()
+            .into_iter()
+            .find(|p| p.id == "aimlapi")
+            .expect("aimlapi is not offered");
+        assert_eq!(aimlapi.logins, vec![Login::Endpoint]);
+        assert_eq!(aimlapi.name, "AI/ML API");
+        assert_eq!(aimlapi.caution, None);
     }
 
     /// Unbiased AI's sign-in mints an API key, so the row leads with it and never asks for a plan.

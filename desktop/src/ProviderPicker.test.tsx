@@ -79,9 +79,19 @@ const unbiased = {
   keyLink: "Get an Unbiased AI API key",
 };
 
+/** A key for AI/ML API's OpenAI-compatible gateway, at its own address. */
+const aimlapi = {
+  id: "aimlapi",
+  name: "AI/ML API",
+  baseUrl: "https://api.aimlapi.com/v1",
+  model: "openai/gpt-5-mini",
+  keyUrl: "https://aimlapi.com/app/keys",
+  keyLink: "Get an AI/ML API key",
+};
+
 const allProviders: Provider[] = [
   ...providers,
-  ...[...cloudProviders, unbiased].map(
+  ...[...cloudProviders, unbiased, aimlapi].map(
     (provider): Provider => ({
       id: provider.id,
       name: provider.name,
@@ -1244,7 +1254,11 @@ for (const provider of cloudProviders) {
   });
 }
 
-for (const provider of [...cloudProviders, unbiased]) {
+/** The key field's label: "AI/ML API key" rather than "AI/ML API API key". */
+const keyLabelFor = (name: string) =>
+  name.endsWith(" API") ? `${name} key` : `${name} API key`;
+
+for (const provider of [...cloudProviders, unbiased, aimlapi]) {
   test(`${provider.name} opens its API key page externally without sending entered credentials`, async () => {
     invokeHandler = async (command) => {
       if (command === "providers") return allProviders;
@@ -1257,7 +1271,7 @@ for (const provider of [...cloudProviders, unbiased]) {
       await view.findByRole("radio", { name: new RegExp(provider.name) }),
     );
     await user.type(
-      view.getByLabelText(`${provider.name} API key`),
+      view.getByLabelText(keyLabelFor(provider.name)),
       "synthetic-private-api-key",
     );
     expect(invokeCalls.map((call) => call.command)).toEqual(["providers"]);
@@ -1293,7 +1307,7 @@ for (const provider of [...cloudProviders, unbiased]) {
       true,
     );
     await user.type(
-      view.getByLabelText(`${provider.name} API key`),
+      view.getByLabelText(keyLabelFor(provider.name)),
       "synthetic-provider-key",
     );
     await user.click(view.getByRole("button", { name: "Continue" }));
@@ -1347,7 +1361,7 @@ for (const provider of [...cloudProviders, unbiased]) {
     expect(
       await view.findByRole("radio", { name: new RegExp(provider.name) }),
     ).toHaveProperty("checked", true);
-    expect(view.getByLabelText(`${provider.name} API key`)).toHaveProperty(
+    expect(view.getByLabelText(keyLabelFor(provider.name))).toHaveProperty(
       "value",
       "synthetic-returning-key",
     );
@@ -1384,7 +1398,7 @@ for (const provider of [...cloudProviders, unbiased]) {
     expect(
       await view.findByRole("radio", { name: new RegExp(provider.name) }),
     ).toHaveProperty("checked", true);
-    expect(view.getByLabelText(`${provider.name} API key`)).toHaveProperty(
+    expect(view.getByLabelText(keyLabelFor(provider.name))).toHaveProperty(
       "value",
       "",
     );
@@ -1398,7 +1412,7 @@ for (const provider of [...cloudProviders, unbiased]) {
     });
 
     await userEvent.type(
-      view.getByLabelText(`${provider.name} API key`),
+      view.getByLabelText(keyLabelFor(provider.name)),
       "synthetic-replacement-key",
     );
     const other = cloudProviders.find(
@@ -1607,4 +1621,85 @@ test("the Claude plan's caution is said with the plan sign-in, not under the API
     view.getByRole("tab", { name: "Sign in with my plan" }),
   );
   expect(view.getByText(/separate monthly pool/)).toBeTruthy();
+});
+
+/*
+ * The AI/ML API row fills in its own address and nothing else. A saved address on a look-alike host
+ * is somebody's own endpoint: it is never shown as AI/ML API, so the row's key field never offers a
+ * saved key that belongs to another server.
+ */
+test("AI/ML API sends the key with its own address only", async () => {
+  invokeHandler = async (command) => {
+    if (command === "providers") return allProviders;
+    throw new Error(`unexpected protected command ${command}`);
+  };
+  const user = userEvent.setup({ document });
+  const choices: unknown[] = [];
+  const view = await renderPicker((choice) => choices.push(choice));
+  await user.click(await view.findByRole("radio", { name: /AI\/ML API/ }));
+  await user.type(
+    view.getByLabelText("AI/ML API key"),
+    "synthetic-aimlapi-key",
+  );
+  await user.click(view.getByRole("button", { name: "Continue" }));
+  expect(choices).toEqual([
+    {
+      provider: "openai-compatible",
+      login: "endpoint",
+      baseUrl: "https://api.aimlapi.com/v1",
+      model: "openai/gpt-5-mini",
+      apiKey: "synthetic-aimlapi-key",
+    },
+  ]);
+});
+
+test("only AI/ML API's own address reads as AI/ML API, so its saved key is offered nowhere else", async () => {
+  invokeHandler = async (command) => {
+    if (command === "providers") return allProviders;
+    throw new Error(`unexpected protected command ${command}`);
+  };
+  const held = (address: string): HeldConfiguration => ({
+    OPENAI_BASE_URL: address,
+    BOT_MODEL: "saved-model",
+    saved: { model: "compatible-endpoint", modelApiKeys: { compatible: true } },
+  });
+  const own = await renderPickerWithHeld(held("https://api.aimlapi.com/v1"));
+  expect(await own.findByRole("radio", { name: /AI\/ML API/ })).toHaveProperty(
+    "checked",
+    true,
+  );
+  expect(own.queryByLabelText("Base URL")).toBeNull();
+  own.unmount();
+
+  for (const elsewhere of [
+    "https://api.aimlapi.com.attacker.example/v1",
+    "https://aimlapi.com/v1",
+    "http://api.aimlapi.com/v1",
+    "https://api.aimlapi.com/v2",
+  ]) {
+    const view = await renderPickerWithHeld(held(elsewhere));
+    expect(
+      await view.findByRole("radio", { name: /OpenAI-compatible/ }),
+    ).toHaveProperty("checked", true);
+    expect(view.getByLabelText("Base URL")).toHaveProperty("value", elsewhere);
+    expect(view.queryByLabelText("AI/ML API key")).toBeNull();
+    view.unmount();
+  }
+});
+
+test("somebody already set up on another provider is not moved to AI/ML API", async () => {
+  invokeHandler = async (command) => {
+    if (command === "providers") return allProviders;
+    throw new Error(`unexpected protected command ${command}`);
+  };
+  const view = await renderPickerWithHeld({
+    OPENAI_BASE_URL: "https://api.x.ai/v1",
+    BOT_MODEL: "grok-4.7",
+    saved: { model: "compatible-endpoint", modelApiKeys: { compatible: true } },
+  });
+  expect(await view.findByRole("radio", { name: /xAI/ })).toHaveProperty(
+    "checked",
+    true,
+  );
+  expect(view.queryByRole("radio", { name: /AI\/ML API/ })).toBeNull();
 });
